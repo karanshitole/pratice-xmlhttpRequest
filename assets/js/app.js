@@ -1,176 +1,216 @@
 const cl= console.log;
 
-const cardContainer = document.getElementById('cardContainer');
 const postForm = document.getElementById('postForm');
 const titleControl = document.getElementById('title');
 const contentControl= document.getElementById('content');
 const userIdControl= document.getElementById('userId');
+const cardContainer = document.getElementById('cardContainer');
+const submitBtn = document.getElementById("submitBtn")
+const updateBtn = document.getElementById("updateBtn")
 const loader= document.getElementById('loader');
 
-const baseUrl= `https://jsonplaceholder.typicode.com`;
-const postUrl= `${baseUrl}/posts/`;
-
-let msgbody= null;
- 
-const onEdit= (ele) =>{
-    cl(ele);
-    let editId= ele.closest('.card').id;
-    localStorage.setItem("editId", editId);
-    let editUrl= `${baseUrl}/posts/${editId}`;
-    makeApiCall("GET", editUrl);
-    
-
-}
 
 
- const onDelete= (ele) => {
+const baseUrl= `https://post-crud-a459f-default-rtdb.asia-southeast1.firebasedatabase.app/`;
+const postUrl= `${baseUrl}/posts.json`;
+const onDelete=(ele)=>{
     Swal.fire({
         title: "Do you want to remove this post?",
         showDenyButton: true,
         showCancelButton: false,
         confirmButtonText: "Yes",
-        denyButtonText: `Don't remove`
-      }).then((result) => {
-        
+        denyButtonText:` Don't remove`
+    })
+    .then((result) => {
+        /* Read more about isConfirmed, isDenied below */
         if (result.isConfirmed) {
             cl(ele);
-            let deleteId= ele.closest(".card").id;
-            localStorage.setItem("deleteId", deleteId);
-            let deleteUrl=  `${baseUrl}/posts/${deleteId}`;
-            makeApiCall("DELETE", deleteUrl);
-        } 
-      });
- }
+            let deleteId = ele.closest(".card").id;
+            cl(deleteId)
+            let DeleteUrl =`${baseUrl}/posts/${deleteId}.json`
+            makeApiCall("DELETE",DeleteUrl)
+            .then(res=>{
+        
+                // cl(res)
+                document.getElementById(deleteId).remove()
+                Swal.fire({
+                    title: `Post is deleteded successfully !!!`,
+                    icon: `success`,
+                    timer: 2000
+                 })
+
+            })
+            .catch(err=> cl(err))
+            .finally(()=>{
+                loader.classList.add("d-none")
+            })
+        }
+        })
+    }
+   
+    
 
 
-const createCards= (arr) => {
-    cardContainer.innerHTML= arr.map(obj =>{
-        return `
-            <div class="card mb-4" id="${obj.id}">
-                <div class="card-header">
+const onEdit=(ele)=>{
+    cl(ele)
+    let editId=ele.closest(".card").id;
+    localStorage.setItem("editId",editId)
+    let editUrl = `${baseUrl}/posts/${editId}.json`;
+
+    makeApiCall("GET", editUrl)
+    .then(res=>{
+        // cl(res)
+        titleControl.value=res.title;
+        contentControl.value=res.content;
+        userIdControl.value=res.userId;
+        submitBtn.classList.add('d-none');
+        updateBtn.classList.remove('d-none');
+
+    })
+    .catch(err=>{
+        cl(err)
+    })
+    .finally(()=>{
+        loader.classList.add("d-none")
+    })
+}
+const createCard =(obj)=>{
+    let card = document.createElement("div");
+    card.classList="card mb-4";
+    card.id=obj.id;
+    card.innerHTML= `
+    
+    <div class="card-header">
                     <h4 class="m-0">${obj.title}</h4>
                 </div>
                 <div class="card-body">
-                    <p class="m-0">${obj.body}</p>
+                    <p class="m-0">${obj.content}</p>
                 </div>
                 <div class="card-footer d-flex justify-content-between">
                     <button class="btn btn-primary" onclick="onEdit(this)">Edit</button>
                     <button class="btn btn-danger" onclick="onDelete(this)">Delete</button>
-                </div>    
-            </div>
-           
-        `
-    }).join("");
+                </div>   `
+        cardContainer.append(card)
 }
 
- 
-const createPostCard= (obj) => {
-    let card= document.createElement('div');
-    card.className= "card mb-4";
-    card.id = obj.id;
-    card.innerHTML= 
-                   `
-                   <div class="card-header">
-                      <h4 class="m-0">${obj.title}</h4>
-                   </div>
-                   <div class="card-body">
-                       <p class="m-0">${obj.body}</p>
-                   </div>
-                   <div class="card-footer d-flex justify-content-between">
-                       <button class="btn btn-primary" onclick="onEdit(this)">Edit</button>
-                       <button class="btn btn-danger" onclick="onDelete(this)">Delete</button>
-                   </div> 
-                   `   
-               cardContainer.append(card);  
-}
-
-
-const makeApiCall= (methodName, apiUrl, msgbody = null) => {  
-    loader.classList.remove("d-none");
-    let xhr= new XMLHttpRequest(); 
-    xhr.open(methodName, apiUrl);
-    xhr.send(JSON.stringify(msgbody));
-    xhr.onload = function(){
-        if(xhr.status >=200 && xhr.status <300){
-        
-         let data= JSON.parse(xhr.response);
-         if(methodName === "GET"){
-            if(Array.isArray(data)){
-            createCards(data);
-            }else{
-                cl(data);
-                titleControl.value= data.title;
-                contentControl.value= data.body;
-                userIdControl.value= data.userId;  
-                updateBtn.classList.remove('d-none');
-                submitBtn.classList.add('d-none');
-
-            }
-         }else if(methodName === "POST"){
-            
-            msgbody.id = data.id;
-            createPostCard(msgbody);
-         }else if(methodName === "PATCH"){
-            let card= [...document.getElementById(msgbody.id).children];
-                 cl(card);
-            card[0].innerHTML= `<h4 class="m-0">${msgbody.title}</h4>`;
-            card[1].innerHTML= `<p class="m-0">${msgbody.body}</p>`;   
-         }else if(methodName === "DELETE"){
-    
-            let deleteId = localStorage.getItem("deleteId");
-            let card = document.getElementById(deleteId); 
-             card.remove();
-            
-         }
-        }  
-        loader.classList.add("d-none");
-    }
-    xhr.onerror= function(){
-        loader.classList.add("d-none");
-    }
-}
-
-
- makeApiCall("GET", postUrl, null)
-  
-  const onSubmitPost= (eve) =>{
-      eve.preventDefault();
-      let postobj={
-            title: titleControl.value,
-            body : contentControl.value,
-            userId: userIdControl.value
-         }
-           cl(postobj);
-        postForm.reset();
-     makeApiCall("POST", postUrl, postobj);
-}
-
-
- const onupdateHandler= () => {
-    let updatedId = localStorage.getItem("editId");  
-     let updatedObj={
-        title: titleControl.value,
-        body : contentControl.value,
-        userId: userIdControl.value,
-        id: updatedId
-     }
-     cl(updatedObj);
-
-     let updatedUrl= `${baseUrl}/posts/${updatedId}`;
-     makeApiCall("PATCH", updatedUrl, updatedObj);
-     Swal.fire({
-        title: `Post is updated`,
-        icon: `success`,
-        timer: 2000
-     })
-     //Api success/fails....
-    //  let card= [...document.getElementById(updatedId).children];
-    //   cl(card);
-    //   card[0].innerHTML= `<h4 class="m-0">${updatedObj.title}</h4>`;
-    //   card[1].innerHTML= `<p class="m-0">${updatedObj.body}</p>`;   
-    
+ const templatingofCard = (arr)=>{
+    arr.forEach(obj=>{
+        createCard(obj)
+    });
  }
+const makeApiCall=(methodName, apiUrl, msgbody=null)=>{
+ return new Promise((resolve, reject)=>{
+    loader.classList.remove("d-none")
+    let xhr = new XMLHttpRequest();
+    xhr.open(methodName,apiUrl)
+    xhr.setRequestHeader("content-type","Application/json");
+    xhr.send(JSON.stringify(msgbody));
+    xhr.onload= function(){
+        if(xhr.status>=200&&xhr.status<300){
+            resolve(JSON.parse(xhr.response))
+        }else{
+            reject('something went worng!!!')
+        }
+    }
+ })
+}
 
 
-postForm.addEventListener("submit", onSubmitPost);
-updateBtn.addEventListener("click", onupdateHandler)
+
+const fetchPost=()=>{
+    makeApiCall("GET", postUrl)
+    .then(res=>{
+        cl(res);
+        let postArr =[];
+        for(const key in res){
+            // cl(res[key])
+            let obj = {...res[key], id:key};
+            // obj.id=key;
+            postArr.push(obj);
+            // cl(postArr)
+           
+        }
+        templatingofCard(postArr)
+    })
+    .catch(err=> cl(err))
+    .finally(()=>{
+        loader.classList.add("d-none")
+    })
+}
+fetchPost();
+
+const onpostSubmit=(event)=>{
+    event.preventDefault();
+    let obj ={
+        title: titleControl.value,
+        content:contentControl.value,
+        userId:userIdControl.value
+    }
+
+    makeApiCall("POST", postUrl, obj)
+    .then(res=>{
+        // cl(res)
+        obj.id=res.name;
+        createCard(obj)
+        Swal.fire({
+            title: `Post is submited successfully !!!`,
+            icon: 'success',
+            timer: 2000
+         })
+
+       
+    })
+    .catch(err=>{
+        cl(err)
+    })
+    .finally(()=>{
+        postForm.reset();
+        loader.classList.add("d-none");
+    })
+}
+const onPostUpdate=()=>{
+    let updatedObj={
+        title:titleControl.value,
+        content:contentControl.value,
+        userId:userIdControl.value
+    }
+    cl(updatedObj)
+    let updateId=localStorage.getItem("edited");
+    let updateUrl=`${baseUrl}/posts/${updateId}.json`
+
+    makeApiCall("PATCH",updateUrl,updatedObj)
+    .then((res)=>{
+        cl(res)
+        res.id=updateId
+        let card =[... document.getElementById(res.id).children];
+        cl(card)
+        card[0].innerHTML=`<h4 class="m-0">${res.title}</h4>`;
+        card[1].innerHTML=`<p class="m-0">${res.contrnt}</p>`;
+        Swal.fire({
+            title: 'Post is updated successfully !!!',
+            icon: success,
+            timer: 2000
+         })
+
+    })
+    .catch((err)=>{
+        cl(err)
+    })
+    .finally(()=>{
+        postForm.reset();
+        updateBtn.classList.add("d-none")
+        submitBtn.classList.remove("d-none")
+     loader.classList.add("d-none")
+    })
+}
+postForm.addEventListener("submit", onpostSubmit)
+updateBtn.addEventListener("click",onPostUpdate)
+
+
+let obj = {
+    userId1:{
+        title:"test 1",
+        content:"Test 1"
+        
+    }
+}
